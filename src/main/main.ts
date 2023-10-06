@@ -1,9 +1,15 @@
-import {app, BrowserWindow, ipcMain, session} from 'electron';
+import {app, BrowserWindow, ipcMain, session, protocol, net} from 'electron';
 import {join} from 'path';
+import {readFileSync} from 'fs';
+import url from 'url'
+import { StorageFolder } from './backend/config'
+
+
+import { setupBackend } from './backend/index'
 
 function createWindow () {
   const mainWindow = new BrowserWindow({
-    width: 800,
+    width: 1200,
     height: 600,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
@@ -46,6 +52,13 @@ app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit()
 });
 
-ipcMain.on('message', (event, message) => {
-  console.log(message);
-})
+setupBackend()
+
+app.whenReady().then(() => {
+  protocol.handle('aarakocra', (request) => {
+    const { host, pathname } = new URL(request.url)
+    const filePath = join(StorageFolder(), decodeURI(pathname))
+    
+    return net.fetch(url.pathToFileURL(filePath).toString())
+  })
+});
